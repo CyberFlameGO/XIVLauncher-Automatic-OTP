@@ -35,3 +35,6 @@ Simple program to store your XIV OTP key in Windows Credentials, automatically s
 [mobile]: https://goatcorp.github.io/faq/mobile_otp
 [1pass]: https://github.com/goatcorp/FFXIVQuickLauncher/tree/master/misc/1password-cli-otp
 [kensykora]: https://gist.github.com/kensykora/b220573b4230d7622c5a23a497c75fd3
+
+## Icon Credit
+[Meteor by ARIS ARISA from NounProject.com](https://thenounproject.com/icon/meteor-4838195/)
