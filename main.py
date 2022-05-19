@@ -1,7 +1,7 @@
 import math
-import time
-import sys
 import os
+import sys
+import time
 
 import keyring
 import ntplib
@@ -27,7 +27,7 @@ TIMEOUT_TOTP_SEND = 30
 
 # https://stackoverflow.com/a/51061279
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
