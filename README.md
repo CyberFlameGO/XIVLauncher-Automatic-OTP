@@ -1,4 +1,4 @@
-# XIV Auto OTP
+# XIVLauncher Automatic OTP
 Simple program to store your XIV OTP key in Windows Credentials, automatically sending it to [XIVLauncher](https://github.com/goatcorp/FFXIVQuickLauncher/).
 
 ## Is this secure?
