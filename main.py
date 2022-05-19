@@ -1,0 +1,235 @@
+import wx.adv
+import wx
+import pyotp
+import ntplib
+import time
+import keyring
+import math
+import psutil
+import requests
+from plyer import notification
+import win32gui
+import win32process
+
+PRODUCT_NAME = "XIV Auth Helper"
+KEYRING_REALM = "ffxivotp"
+CONFIGURE_TEXT = "Configure OTP Secret"
+GENERATE_TEXT = "Generate OTP Code"
+YOUR_CODE_IS = "Your OTP Code is: "
+CHECK_EVERY_MS = 1 * 1000
+SEARCH_PROCESS_NAME = "XIVLauncher.exe"
+SEARCH_WINDOW_NAME = "Enter OTP key"
+TIMEOUT_TOTP_SEND = 30
+
+
+def create_menu_item(menu, label, func):
+    item = wx.MenuItem(menu, -1, label)
+    menu.Bind(wx.EVT_MENU, func, id=item.GetId())
+    menu.Append(item)
+    return item
+
+
+def get_secret():
+    return keyring.get_password(KEYRING_REALM, "secret")
+
+
+def generate_otp(override=None):
+    totp = pyotp.parse_uri(get_secret() or override)
+    return totp.now()
+
+
+def check_clock():
+    try:
+        client = ntplib.NTPClient()
+        res = client.request("pool.ntp.org")
+
+        delta = abs(res.tx_time - time.time())
+
+        if delta >= 5:
+            dlg = wx.MessageDialog(
+                None,
+                "Your PC clock is %.1f seconds out of sync. Generated OTP codes may be incorrect." % delta,
+                PRODUCT_NAME,
+                style=wx.ICON_ERROR,
+            )
+            dlg.ShowModal()
+
+    except Exception as e:
+        print(e)
+        pass
+
+
+def notify(message):
+    notification.notify(
+        title=PRODUCT_NAME,
+        message=message,
+        app_icon="icon.ico",
+    )
+
+
+class TaskBarIcon(wx.adv.TaskBarIcon):
+    def __init__(self, frame):
+        self.check_after = 0
+        self.generate_lock = False
+
+        self.frame = frame
+        super(TaskBarIcon, self).__init__()
+        self.set_icon("icon.ico")
+        self.Bind(wx.adv.EVT_TASKBAR_LEFT_DOWN, self.on_click)
+
+        self.timer = wx.Timer(self)
+        self.timer.Start(CHECK_EVERY_MS)
+        self.Bind(wx.EVT_TIMER, self.on_tick)
+
+    def CreatePopupMenu(self):
+        menu = wx.Menu()
+        create_menu_item(menu, CONFIGURE_TEXT, self.on_setup)
+        create_menu_item(menu, GENERATE_TEXT, self.on_generate)
+        menu.AppendSeparator()
+        create_menu_item(menu, "Exit", self.on_exit)
+        return menu
+
+    def set_icon(self, path):
+        icon = wx.Icon(path)
+        self.SetIcon(icon, PRODUCT_NAME)
+
+    def on_tick(self, event):
+        if self.check_after > time.time():
+            return
+
+        active_window = win32gui.GetForegroundWindow()
+
+        if win32gui.GetWindowText(active_window).lower() != SEARCH_WINDOW_NAME.lower():
+            return
+
+        _, active_window_pid = win32process.GetWindowThreadProcessId(active_window)
+        active_window_pname = psutil.Process(active_window_pid).name().lower()
+
+        if active_window_pname != SEARCH_PROCESS_NAME.lower():
+            return
+
+        notify("Sending OTP code...")
+
+        try:
+            response = requests.get(f"http://localhost:4646/ffxivlauncher/{generate_otp()}")
+            response.raise_for_status()
+
+            notify("OTP code sent")
+        except Exception as e:
+            print(e)
+            notify("Error sending OTP code")
+
+        check_clock()
+
+        self.check_after = time.time() + TIMEOUT_TOTP_SEND
+
+    def on_click(self, event):
+        if get_secret():
+            self.on_generate(event)
+        else:
+            self.on_setup(event)
+
+    def on_setup(self, event):
+        if get_secret():
+            erase_config_msg_dialog = wx.MessageDialog(
+                None,
+                "A OTP secret has already been saved. Would you like to erase it?",
+                CONFIGURE_TEXT,
+                style=wx.ICON_WARNING | wx.YES_NO | wx.CANCEL | wx.NO_DEFAULT,
+            )
+            erase_config_msg_modal = erase_config_msg_dialog.ShowModal()
+
+            if erase_config_msg_modal != wx.ID_YES:
+                return
+
+            text = ""
+            while text.lower() != "confirm":
+                erase_config_text_dialog = wx.TextEntryDialog(
+                    None,
+                    'Are you sure you would like to erase your OTP secret? Type "confirm" to confirm.',
+                    CONFIGURE_TEXT,
+                    text,
+                )
+                erase_config_text_modal = erase_config_text_dialog.ShowModal()
+
+                if erase_config_text_modal != wx.ID_OK:
+                    return
+
+                text = erase_config_text_dialog.GetValue().lower()
+
+            keyring.delete_password(KEYRING_REALM, "secret")
+
+            erase_confirm_msg_dialog = wx.MessageDialog(None, "OTP secret erased.", CONFIGURE_TEXT)
+            erase_confirm_msg_dialog.ShowModal()
+            return
+
+        setup_dialog = wx.PasswordEntryDialog(None, "Please enter the OTP secret URL:", CONFIGURE_TEXT)
+        rc1 = setup_dialog.ShowModal()
+
+        if rc1 == wx.ID_OK:
+            secret = setup_dialog.GetValue()
+
+            if not (secret.startswith("otpauth://")) or not generate_otp(secret):
+                invalid_dialog = wx.MessageDialog(None, "Invalid secret.", CONFIGURE_TEXT, style=wx.ICON_ERROR)
+                invalid_dialog.ShowModal()
+                return self.on_setup(event)
+
+            keyring.set_password(KEYRING_REALM, "secret", secret)
+
+            confirm_dialog = wx.MessageDialog(None, "Secret saved.", CONFIGURE_TEXT)
+            confirm_dialog.ShowModal()
+
+    def on_generate(self, event):
+        if self.generate_lock:
+            return
+
+        self.generate_lock = True
+
+        if not get_secret():
+            dialog = wx.MessageDialog(
+                None,
+                "The OTP secret has not yet been configured. Configure a secret first.",
+                GENERATE_TEXT,
+                style=wx.ICON_WARNING,
+            )
+            dialog.ShowModal()
+
+            self.generate_lock = False
+            return
+
+        totp = pyotp.parse_uri(get_secret())
+
+        process_dialog = wx.ProgressDialog(GENERATE_TEXT, YOUR_CODE_IS, style=wx.PD_CAN_ABORT)
+        running = True
+
+        check_clock()
+
+        while running:
+            time_remaining = math.floor(totp.interval - time.time() % totp.interval)
+            progress = int(time_remaining * 100 / totp.interval)
+
+            running, _ = process_dialog.Update(progress, YOUR_CODE_IS + str(totp.now()))
+            time.sleep(0.01)
+
+        self.generate_lock = False
+
+    def on_exit(self, event):
+        wx.CallAfter(self.Destroy)
+        self.frame.Close()
+
+
+class App(wx.App):
+    def OnInit(self):
+        frame = wx.Frame(None)
+        self.SetTopWindow(frame)
+        TaskBarIcon(frame)
+        return True
+
+
+def main():
+    app = App(False)
+    app.MainLoop()
+
+
+if __name__ == "__main__":
+    main()
