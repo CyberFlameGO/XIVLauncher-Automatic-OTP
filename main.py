@@ -96,6 +96,8 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.timer.Start(CHECK_EVERY_MS)
         self.Bind(wx.EVT_TIMER, self.on_tick)
 
+        notify(PRODUCT_NAME + " started. Right click tray icon to configure.")
+
     def CreatePopupMenu(self):
         menu = wx.Menu()
         create_menu_item(menu, CONFIGURE_TEXT, self.on_setup)
