@@ -1,0 +1,1 @@
+# xivlauncher-otp
