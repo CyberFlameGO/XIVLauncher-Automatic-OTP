@@ -15,7 +15,7 @@ import wx.adv
 from plyer import notification
 
 
-PRODUCT_NAME = "XIV Auth Helper"
+PRODUCT_NAME = "XIV Auto OTP"
 KEYRING_REALM = "ffxivotp"
 CONFIGURE_TEXT = "Configure OTP Secret"
 GENERATE_TEXT = "Generate OTP Code"
