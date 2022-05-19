@@ -222,8 +222,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.generate_lock = False
 
     def on_exit(self, event):
-        wx.CallAfter(self.Destroy)
-        self.frame.Close()
+        exit()
 
 
 class App(wx.App):
