@@ -1,0 +1,31 @@
+name: "Build using pyinstaller on push"
+
+on: [workflow_dispatch, push]
+
+jobs:
+  autoformat:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+
+      - name: Install pyinstaller
+        run: pip install pyinstaller
+
+      - name: Install pip modules
+        run: pip install -r requirements.txt
+
+      - name: Build exe
+        run: pyinstaller main.py --onefile --add-data icon.ico;. -i icon.ico --nowindow --hidden-import plyer.platforms.win.notification
+
+      - name: Run Black 
+        run: black .
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: executable
+          path: dist/main.exe
