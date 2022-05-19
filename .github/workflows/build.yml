@@ -23,7 +23,7 @@ jobs:
         run: pyinstaller main.py --noconsole --onefile --add-data icon.ico`;. -i icon.ico
 
       - name: Rename exe
-        run: ren dist/main.exe dist/XIVLauncher-Automatic-OTP.exe
+        run: ren dist/main.exe XIVLauncher-Automatic-OTP.exe
 
       - uses: actions/upload-artifact@v3
         with:
