@@ -12,7 +12,6 @@ import win32gui
 import win32process
 import wx
 import wx.adv
-from plyer import notification
 
 
 PRODUCT_NAME = "XIVLauncher Automatic OTP"
@@ -74,14 +73,6 @@ def check_clock():
         pass
 
 
-def notify(message):
-    notification.notify(
-        title=PRODUCT_NAME,
-        message=message,
-        app_icon=resource_path("icon.ico"),
-    )
-
-
 class TaskBarIcon(wx.adv.TaskBarIcon):
     def __init__(self, frame):
         self.check_after = 0
@@ -96,7 +87,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.timer.Start(CHECK_EVERY_MS)
         self.Bind(wx.EVT_TIMER, self.on_tick)
 
-        notify(PRODUCT_NAME + " started. Right click tray icon to configure.")
+        self.ShowBalloon(PRODUCT_NAME, PRODUCT_NAME + " started. Right click tray icon to configure.")
 
     def CreatePopupMenu(self):
         menu = wx.Menu()
@@ -125,16 +116,16 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         if active_window_pname != SEARCH_PROCESS_NAME.lower():
             return
 
-        notify("Sending OTP code...")
+        self.ShowBalloon(PRODUCT_NAME, "Sending OTP code...")
 
         try:
             response = requests.get(f"http://localhost:4646/ffxivlauncher/{generate_otp()}")
             response.raise_for_status()
 
-            notify("OTP code sent")
+            self.ShowBalloon(PRODUCT_NAME, "OTP code sent")
         except Exception as e:
             print(e)
-            notify("Error sending OTP code")
+            self.ShowBalloon(PRODUCT_NAME, "Error sending OTP code")
 
         check_clock()
 
