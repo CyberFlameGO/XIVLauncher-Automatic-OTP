@@ -3,7 +3,7 @@ name: "Build using pyinstaller"
 on: [workflow_dispatch]
 
 jobs:
-  autoformat:
+  build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
@@ -20,7 +20,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Build exe
-        run: pyinstaller main.py --onefile --add-data icon.ico`;. -i icon.ico --nowindow --hidden-import plyer.platforms.win.notification
+        run: pyinstaller main.py --noconsole --onefile --add-data icon.ico`;. -i icon.ico --hidden-import plyer.platforms.win.notification
 
       - uses: actions/upload-artifact@v3
         with:
