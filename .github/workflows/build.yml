@@ -22,7 +22,12 @@ jobs:
       - name: Build exe
         run: pyinstaller main.py --noconsole --onefile --add-data icon.ico`;. -i icon.ico --hidden-import plyer.platforms.win.notification
 
+      - name: Rename exe
+        run: ren dist/main.exe dist/XIVLauncher-Automatic-OTP.exe
+
       - uses: actions/upload-artifact@v3
         with:
-          name: executable
-          path: dist/main.exe
+          name: build
+          path: |
+            dist/XIVLauncher-Automatic-OTP.exe
+            README.md
