@@ -1,5 +1,7 @@
 import math
 import time
+import sys
+import os
 
 import keyring
 import ntplib
@@ -22,6 +24,17 @@ CHECK_EVERY_MS = 1 * 1000
 SEARCH_PROCESS_NAME = "XIVLauncher.exe"
 SEARCH_WINDOW_NAME = "Enter OTP key"
 TIMEOUT_TOTP_SEND = 30
+
+# https://stackoverflow.com/a/51061279
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 
 def create_menu_item(menu, label, func):
@@ -65,7 +78,7 @@ def notify(message):
     notification.notify(
         title=PRODUCT_NAME,
         message=message,
-        app_icon="icon.ico",
+        app_icon=resource_path("icon.ico"),
     )
 
 
@@ -76,7 +89,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
 
         self.frame = frame
         super(TaskBarIcon, self).__init__()
-        self.set_icon("icon.ico")
+        self.set_icon(resource_path("icon.ico"))
         self.Bind(wx.adv.EVT_TASKBAR_LEFT_DOWN, self.on_click)
 
         self.timer = wx.Timer(self)
