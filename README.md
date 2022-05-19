@@ -2,8 +2,8 @@
 Simple program to store your XIV OTP key in Windows Credentials, automatically sending it to [XIVLauncher](https://github.com/goatcorp/FFXIVQuickLauncher/).
 
 ## Is this secure?
-* This program stores your OTP secret in the Windows Credentials. While this is slightly more secure than [storing it in plain text][kensykora], it is not secure as using [proper encrypted storage][1pass], or [another device][mobile]; any user program could still access the secret from Windows Credentials if they knew to look.
-* This programs the entire "two factor" from 2FA. If a user had access to your computer, they could login as you.
+* This program stores your OTP secret in the Windows Credentials. While this is slightly more secure than [storing it in plain text][kensykora], it is not secure as using [proper encrypted storage][1pass], or [another device][mobile]; any user program could still access the secret from Windows Credentials if they knew where to look.
+* This programs removes the entire "two factor" from 2FA. If a user had access to your computer, they could login as you.
 
 ## Why use it?
 * This program offers more protection then no OTP at all, giving many of the bonuses of securing your account with OTP.
