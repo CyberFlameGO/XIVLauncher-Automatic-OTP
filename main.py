@@ -77,6 +77,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
     def __init__(self, frame):
         self.check_after = 0
         self.generate_lock = False
+        self.closing = False
 
         self.frame = frame
         super(TaskBarIcon, self).__init__()
@@ -213,6 +214,9 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         check_clock()
 
         while running:
+            if self.closing:
+                break
+
             time_remaining = math.floor(totp.interval - time.time() % totp.interval)
             progress = int(time_remaining * 100 / totp.interval)
 
@@ -222,7 +226,9 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.generate_lock = False
 
     def on_exit(self, event):
-        exit()
+        self.closing = True
+        wx.CallAfter(self.Destroy)
+        self.frame.Close()
 
 
 class App(wx.App):
