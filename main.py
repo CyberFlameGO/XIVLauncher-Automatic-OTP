@@ -1,15 +1,17 @@
-import wx.adv
-import wx
-import pyotp
-import ntplib
-import time
-import keyring
 import math
+import time
+
+import keyring
+import ntplib
 import psutil
+import pyotp
 import requests
-from plyer import notification
 import win32gui
 import win32process
+import wx
+import wx.adv
+from plyer import notification
+
 
 PRODUCT_NAME = "XIV Auth Helper"
 KEYRING_REALM = "ffxivotp"
