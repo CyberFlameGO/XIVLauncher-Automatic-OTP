@@ -240,7 +240,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         totp = pyotp.parse_uri(get_secret())
         dialog_message = 'Your OTP code is: %s\nClick "Skip" to copy the OTP code to your clipboard.'
 
-        process_dialog = wx.ProgressDialog(GENERATE_TEXT, dialog_message, style=wx.PD_CAN_ABORT | wx.PD_CAN_SKIP)
+        process_dialog = wx.ProgressDialog(GENERATE_TEXT, dialog_message % "", style=wx.PD_CAN_ABORT | wx.PD_CAN_SKIP)
         running = True
 
         check_clock()
