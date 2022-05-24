@@ -67,14 +67,14 @@ def check_clock():
         if delta >= 5:
             dlg = wx.MessageDialog(
                 None,
-                "Your PC clock is %.1f seconds out of sync. Generated OTP codes may be incorrect." % delta,
+                "Your PC clock is %.1f seconds out of sync. Generated OTP codes may be incorrect or exploited." % delta,
                 PRODUCT_NAME,
                 style=wx.ICON_ERROR,
             )
             dlg.ShowModal()
 
     except Exception as e:
-        print(e)
+        log_exception(e)
         pass
 
 
@@ -259,6 +259,8 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.show_balloon("Sending OTP code...")
 
         try:
+            check_clock()
+
             response = requests.get(f"http://localhost:4646/ffxivlauncher/{generate_otp()}")
             response.raise_for_status()
 
@@ -267,8 +269,6 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
             log_exception(e)
             self.show_balloon("Error sending OTP code")
             return
-
-        check_clock()
 
     def on_exit(self, event):
         self.closing = True
