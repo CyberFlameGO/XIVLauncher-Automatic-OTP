@@ -113,7 +113,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.timer.Start(CHECK_EVERY_MS)
         self.Bind(wx.EVT_TIMER, self.on_tick)
 
-        self.show_balloon(PRODUCT_NAME + " started. Right click tray icon to configure.")
+        self.ShowBalloon(PRODUCT_NAME, PRODUCT_NAME + " started. Right click tray icon to configure.")
 
     def CreatePopupMenu(self):
         menu = wx.Menu()
@@ -142,7 +142,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
     def on_tickbox(self, event):
         self.do_scan = not self.do_scan
         self.config.WriteBool("do_scan", self.do_scan)
-        self.show_balloon(f"{SCAN_TEST} was {'enabled' if self.do_scan else 'disabled'}.")
+        self.ShowBalloon(PRODUCT_NAME, f"{SCAN_TEST} was {'enabled' if self.do_scan else 'disabled'}.")
 
     def on_tick(self, event):
         if not self.do_scan or self.check_after > time.time():
@@ -238,9 +238,9 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
             return
 
         totp = pyotp.parse_uri(get_secret())
-        dialog_message = 'Your OTP code is: %s\nClick "Skip" to copy the OTP code to your clipboard.'
+        dialog_message = "Your OTP code is: %s\n"
 
-        process_dialog = wx.ProgressDialog(GENERATE_TEXT, dialog_message % "", style=wx.PD_CAN_ABORT | wx.PD_CAN_SKIP)
+        process_dialog = wx.ProgressDialog(GENERATE_TEXT, dialog_message % "", style=wx.PD_CAN_ABORT)
         running = True
 
         check_clock()
@@ -254,22 +254,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
 
             running, _ = process_dialog.Update(progress, dialog_message % str(totp.now()))
 
-            if process_dialog.WasSkipped():
-                process_dialog.Update(0)
-
-                try:
-                    if wx.TheClipboard.Open():
-                        wx.TheClipboard.SetData(wx.TextDataObject(str(totp.now())))
-                        wx.TheClipboard.Close()
-
-                        self.show_balloon("OTP code copied to clipboard.")
-
-                except Exception as e:
-                    log_exception(e)
-                    pass
-
-            else:
-                time.sleep(0.01)
+            time.sleep(0.01)
 
         self.generate_lock = False
 
@@ -286,7 +271,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
 
             return
 
-        self.show_balloon("Sending OTP code...")
+        self.ShowBalloon(PRODUCT_NAME, "Sending OTP code...")
 
         try:
             check_clock()
@@ -294,10 +279,10 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
             response = requests.get(f"http://localhost:4646/ffxivlauncher/{generate_otp()}")
             response.raise_for_status()
 
-            self.show_balloon("OTP code sent")
+            self.ShowBalloon(PRODUCT_NAME, "OTP code sent")
         except Exception as e:
             log_exception(e)
-            self.show_balloon("Error sending OTP code")
+            self.ShowBalloon(PRODUCT_NAME, "Error sending OTP code")
             return
 
     def on_exit(self, event):
