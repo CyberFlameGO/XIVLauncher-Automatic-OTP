@@ -2,12 +2,16 @@ import math
 import os
 import sys
 import time
+from tkinter import EXCEPTION
+import traceback
 
 import keyring
 import ntplib
 import psutil
 import pyotp
 import requests
+import win32evtlog
+import win32evtlogutil
 import win32gui
 import win32process
 import wx
@@ -25,13 +29,13 @@ SEARCH_PROCESS_NAME = "XIVLauncher.exe"
 SEARCH_WINDOW_NAME = "Enter OTP key"
 TIMEOUT_TOTP_SEND = 30
 
-# https://stackoverflow.com/a/51061279
+IS_BUILT = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+
+
 def resource_path(relative_path):
-    """Get absolute path to resource, works for dev and for PyInstaller"""
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
+    if IS_BUILT:
         base_path = sys._MEIPASS
-    except Exception:
+    else:
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
@@ -74,6 +78,23 @@ def check_clock():
         pass
 
 
+def log_exception(e):
+    tb = traceback.format_exception(None, e, e.__traceback__)
+
+    if IS_BUILT:
+        e_type, _, _ = sys.exc_info()
+        event_strings = [str(e_type.__name__), str(e)] + tb
+
+        # https://docs.microsoft.com/en-us/windows/win32/eventlog/event-identifiers
+        # 718 = "Application popup: %1 : %2" in winerror.h
+        win32evtlogutil.ReportEvent(PRODUCT_NAME, 718, strings=event_strings)
+    else:
+        print(f"[Exception]: {e}")
+        print("-" * 80)
+        print("\n".join(tb))
+        print("-" * 80)
+
+
 class TaskBarIcon(wx.adv.TaskBarIcon):
     def __init__(self, frame):
         self.check_after = 0
@@ -89,7 +110,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.timer.Start(CHECK_EVERY_MS)
         self.Bind(wx.EVT_TIMER, self.on_tick)
 
-        self.ShowBalloon(PRODUCT_NAME, PRODUCT_NAME + " started. Right click tray icon to configure.")
+        self.show_balloon(PRODUCT_NAME + " started. Right click tray icon to configure.")
 
     def CreatePopupMenu(self):
         menu = wx.Menu()
@@ -99,6 +120,12 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         menu.AppendSeparator()
         create_menu_item(menu, "Exit", self.on_exit)
         return menu
+
+    def show_balloon(self, str):
+        if IS_BUILT:
+            self.ShowBalloon(PRODUCT_NAME, str)
+        else:
+            print(f"[{PRODUCT_NAME}]: {str}")
 
     def set_icon(self, path):
         icon = wx.Icon(path)
@@ -229,15 +256,16 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
 
             return
 
-        self.ShowBalloon(PRODUCT_NAME, "Sending OTP code...")
+        self.show_balloon("Sending OTP code...")
 
         try:
             response = requests.get(f"http://localhost:4646/ffxivlauncher/{generate_otp()}")
             response.raise_for_status()
 
-            self.ShowBalloon(PRODUCT_NAME, "OTP code sent")
+            self.show_balloon("OTP code sent")
         except Exception as e:
-            self.ShowBalloon(PRODUCT_NAME, "Error sending OTP code")
+            log_exception(e)
+            self.show_balloon("Error sending OTP code")
             return
 
         check_clock()
