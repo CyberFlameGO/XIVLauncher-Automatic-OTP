@@ -2,7 +2,6 @@ import math
 import os
 import sys
 import time
-from tkinter import EXCEPTION
 import traceback
 
 import keyring
@@ -10,7 +9,6 @@ import ntplib
 import psutil
 import pyotp
 import requests
-import win32evtlog
 import win32evtlogutil
 import win32gui
 import win32process
@@ -19,15 +17,17 @@ import wx.adv
 
 
 PRODUCT_NAME = "XIVLauncher Automatic OTP"
-KEYRING_REALM = "ffxivotp"
+APP_NAME_REALM = "ffxivotp"
 CONFIGURE_TEXT = "Configure OTP Secret"
 GENERATE_TEXT = "Generate OTP Code"
 SEND_TEXT = "Send OTP Code"
+SCAN_TEST = "Automatic Code Sending"
 YOUR_CODE_IS = "Your OTP Code is: "
 CHECK_EVERY_MS = 1 * 1000
 SEARCH_PROCESS_NAME = "XIVLauncher.exe"
 SEARCH_WINDOW_NAME = "Enter OTP key"
 TIMEOUT_TOTP_SEND = 30
+CONFIG_PATH = "ffxivotp.ini"
 
 IS_BUILT = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
@@ -41,15 +41,15 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def create_menu_item(menu, label, func):
-    item = wx.MenuItem(menu, -1, label)
+def create_menu_item(menu, label, func, kind=wx.ITEM_NORMAL):
+    item = wx.MenuItem(menu, -1, label, kind=kind)
     menu.Bind(wx.EVT_MENU, func, id=item.GetId())
     menu.Append(item)
     return item
 
 
 def get_secret():
-    return keyring.get_password(KEYRING_REALM, "secret")
+    return keyring.get_password(APP_NAME_REALM, "secret")
 
 
 def generate_otp(override=None):
@@ -97,6 +97,10 @@ def log_exception(e):
 
 class TaskBarIcon(wx.adv.TaskBarIcon):
     def __init__(self, frame):
+        self.config = wx.Config(APP_NAME_REALM)
+
+        self.do_scan = self.config.ReadBool("do_scan", True)
+
         self.check_after = 0
         self.generate_lock = False
         self.closing = False
@@ -115,6 +119,11 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
     def CreatePopupMenu(self):
         menu = wx.Menu()
         create_menu_item(menu, CONFIGURE_TEXT, self.on_setup)
+
+        scanCheckItem = create_menu_item(menu, SCAN_TEST, self.on_tickbox, kind=wx.ITEM_CHECK)
+        scanCheckItem.Check(self.do_scan)
+        menu.AppendSeparator()
+
         create_menu_item(menu, GENERATE_TEXT, self.on_generate)
         create_menu_item(menu, SEND_TEXT, self.on_send)
         menu.AppendSeparator()
@@ -131,8 +140,13 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         icon = wx.Icon(path)
         self.SetIcon(icon, PRODUCT_NAME)
 
+    def on_tickbox(self, event):
+        self.do_scan = not self.do_scan
+        self.config.WriteBool("do_scan", self.do_scan)
+        self.show_balloon(f"{SCAN_TEST} was {'enabled' if self.do_scan else 'disabled'}.")
+
     def on_tick(self, event):
-        if self.check_after > time.time():
+        if not self.do_scan or self.check_after > time.time():
             return
 
         active_window = win32gui.GetForegroundWindow()
@@ -184,7 +198,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
 
                 text = erase_config_text_dialog.GetValue().lower()
 
-            keyring.delete_password(KEYRING_REALM, "secret")
+            keyring.delete_password(APP_NAME_REALM, "secret")
 
             erase_confirm_msg_dialog = wx.MessageDialog(None, "OTP secret erased.", CONFIGURE_TEXT)
             erase_confirm_msg_dialog.ShowModal()
@@ -201,7 +215,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
                 invalid_dialog.ShowModal()
                 return self.on_setup(event)
 
-            keyring.set_password(KEYRING_REALM, "secret", secret)
+            keyring.set_password(APP_NAME_REALM, "secret", secret)
 
             confirm_dialog = wx.MessageDialog(None, "Secret saved.", CONFIGURE_TEXT)
             confirm_dialog.ShowModal()
