@@ -18,6 +18,7 @@ PRODUCT_NAME = "XIVLauncher Automatic OTP"
 KEYRING_REALM = "ffxivotp"
 CONFIGURE_TEXT = "Configure OTP Secret"
 GENERATE_TEXT = "Generate OTP Code"
+SEND_TEXT = "Send OTP Code"
 YOUR_CODE_IS = "Your OTP Code is: "
 CHECK_EVERY_MS = 1 * 1000
 SEARCH_PROCESS_NAME = "XIVLauncher.exe"
@@ -94,6 +95,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         menu = wx.Menu()
         create_menu_item(menu, CONFIGURE_TEXT, self.on_setup)
         create_menu_item(menu, GENERATE_TEXT, self.on_generate)
+        create_menu_item(menu, SEND_TEXT, self.on_send)
         menu.AppendSeparator()
         create_menu_item(menu, "Exit", self.on_exit)
         return menu
@@ -117,18 +119,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         if active_window_pname != SEARCH_PROCESS_NAME.lower():
             return
 
-        self.ShowBalloon(PRODUCT_NAME, "Sending OTP code...")
-
-        try:
-            response = requests.get(f"http://localhost:4646/ffxivlauncher/{generate_otp()}")
-            response.raise_for_status()
-
-            self.ShowBalloon(PRODUCT_NAME, "OTP code sent")
-        except Exception as e:
-            print(e)
-            self.ShowBalloon(PRODUCT_NAME, "Error sending OTP code")
-
-        check_clock()
+        self.on_send(event, True)
 
         self.check_after = time.time() + TIMEOUT_TOTP_SEND
 
@@ -224,6 +215,32 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
             time.sleep(0.01)
 
         self.generate_lock = False
+
+    def on_send(self, event, auto=False):
+        if not get_secret():
+            if not auto:
+                dialog = wx.MessageDialog(
+                    None,
+                    "The OTP secret has not yet been configured. Configure a secret first.",
+                    GENERATE_TEXT,
+                    style=wx.ICON_WARNING,
+                )
+                dialog.ShowModal()
+
+            return
+
+        self.ShowBalloon(PRODUCT_NAME, "Sending OTP code...")
+
+        try:
+            response = requests.get(f"http://localhost:4646/ffxivlauncher/{generate_otp()}")
+            response.raise_for_status()
+
+            self.ShowBalloon(PRODUCT_NAME, "OTP code sent")
+        except Exception as e:
+            self.ShowBalloon(PRODUCT_NAME, "Error sending OTP code")
+            return
+
+        check_clock()
 
     def on_exit(self, event):
         self.closing = True
