@@ -19,7 +19,7 @@ import wx.adv
 PRODUCT_NAME = "XIVLauncher Automatic OTP"
 APP_NAME_REALM = "ffxivotp"
 CONFIGURE_TEXT = "Configure OTP Secret"
-GENERATE_TEXT = "Generate OTP Code"
+GENERATE_TEXT = "Copy OTP Code"
 SEND_TEXT = "Send OTP Code"
 SCAN_TEST = "Automatic Code Sending"
 CHECK_EVERY_MS = 1 * 1000
@@ -101,7 +101,6 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.do_scan = self.config.ReadBool("do_scan", True)
 
         self.check_after = 0
-        self.generate_lock = False
         self.closing = False
 
         self.frame = frame
@@ -220,11 +219,6 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
             confirm_dialog.ShowModal()
 
     def on_generate(self, event):
-        if self.generate_lock:
-            return
-
-        self.generate_lock = True
-
         if not get_secret():
             dialog = wx.MessageDialog(
                 None,
@@ -233,30 +227,26 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
                 style=wx.ICON_WARNING,
             )
             dialog.ShowModal()
-
-            self.generate_lock = False
             return
 
-        totp = pyotp.parse_uri(get_secret())
-        dialog_message = "Your OTP code is: %s\n"
+        self.ShowBalloon(PRODUCT_NAME, "Generating OTP code...")
 
-        process_dialog = wx.ProgressDialog(GENERATE_TEXT, dialog_message % "", style=wx.PD_CAN_ABORT)
-        running = True
+        try:
+            if wx.TheClipboard.Open() or wx.TheClipboard.Open():
+                check_clock()
 
-        check_clock()
+                wx.TheClipboard.SetData(wx.TextDataObject(generate_otp()))
+                wx.TheClipboard.Close()
 
-        while running:
-            if self.closing:
-                break
+                self.ShowBalloon(PRODUCT_NAME, "OTP code copied to clipboard!")
+                return
+            else:
+                raise OSError("Unable to open clipboard.")
 
-            time_remaining = math.floor(totp.interval - time.time() % totp.interval)
-            progress = int(time_remaining * 100 / totp.interval)
-
-            running, _ = process_dialog.Update(progress, dialog_message % str(totp.now()))
-
-            time.sleep(0.01)
-
-        self.generate_lock = False
+        except Exception as e:
+            self.ShowBalloon(PRODUCT_NAME, "Error copying OTP code")
+            log_exception(e)
+            pass
 
     def on_send(self, event, auto=False):
         if not get_secret():
@@ -279,7 +269,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
             response = requests.get(f"http://localhost:4646/ffxivlauncher/{generate_otp()}")
             response.raise_for_status()
 
-            self.ShowBalloon(PRODUCT_NAME, "OTP code sent")
+            self.ShowBalloon(PRODUCT_NAME, "OTP code sent!")
         except Exception as e:
             log_exception(e)
             self.ShowBalloon(PRODUCT_NAME, "Error sending OTP code")
