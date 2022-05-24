@@ -22,7 +22,6 @@ CONFIGURE_TEXT = "Configure OTP Secret"
 GENERATE_TEXT = "Generate OTP Code"
 SEND_TEXT = "Send OTP Code"
 SCAN_TEST = "Automatic Code Sending"
-YOUR_CODE_IS = "Your OTP Code is: "
 CHECK_EVERY_MS = 1 * 1000
 SEARCH_PROCESS_NAME = "XIVLauncher.exe"
 SEARCH_WINDOW_NAME = "Enter OTP key"
@@ -239,8 +238,9 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
             return
 
         totp = pyotp.parse_uri(get_secret())
+        dialog_message = 'Your OTP code is: %s\nClick "Skip" to copy the OTP code to your clipboard.'
 
-        process_dialog = wx.ProgressDialog(GENERATE_TEXT, YOUR_CODE_IS, style=wx.PD_CAN_ABORT)
+        process_dialog = wx.ProgressDialog(GENERATE_TEXT, dialog_message, style=wx.PD_CAN_ABORT | wx.PD_CAN_SKIP)
         running = True
 
         check_clock()
@@ -252,8 +252,24 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
             time_remaining = math.floor(totp.interval - time.time() % totp.interval)
             progress = int(time_remaining * 100 / totp.interval)
 
-            running, _ = process_dialog.Update(progress, YOUR_CODE_IS + str(totp.now()))
-            time.sleep(0.01)
+            running, _ = process_dialog.Update(progress, dialog_message % str(totp.now()))
+
+            if process_dialog.WasSkipped():
+                process_dialog.Update(0)
+
+                try:
+                    if wx.TheClipboard.Open():
+                        wx.TheClipboard.SetData(wx.TextDataObject(str(totp.now())))
+                        wx.TheClipboard.Close()
+
+                        self.show_balloon("OTP code copied to clipboard.")
+
+                except Exception as e:
+                    log_exception(e)
+                    pass
+
+            else:
+                time.sleep(0.01)
 
         self.generate_lock = False
 
