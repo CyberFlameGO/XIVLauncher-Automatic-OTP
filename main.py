@@ -99,6 +99,7 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.config = wx.Config(APP_NAME_REALM)
 
         self.do_scan = self.config.ReadBool("do_scan", True)
+        self.tick_lock = False
 
         self.check_after = 0
         self.closing = False
@@ -142,25 +143,35 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
         self.do_scan = not self.do_scan
         self.config.WriteBool("do_scan", self.do_scan)
         self.ShowBalloon(PRODUCT_NAME, f"{SCAN_TEST} was {'enabled' if self.do_scan else 'disabled'}.")
+        self.tick_lock = False
 
     def on_tick(self, event):
+        if self.tick_lock:
+            return
+            
+        self.tick_lock = True
+        
         if not self.do_scan or self.check_after > time.time():
+            self.tick_lock = False
             return
 
         active_window = win32gui.GetForegroundWindow()
 
         if win32gui.GetWindowText(active_window).lower() != SEARCH_WINDOW_NAME.lower():
+            self.tick_lock = False
             return
 
         _, active_window_pid = win32process.GetWindowThreadProcessId(active_window)
         active_window_pname = psutil.Process(active_window_pid).name().lower()
 
         if active_window_pname != SEARCH_PROCESS_NAME.lower():
+            self.tick_lock = False
             return
 
         self.on_send(event, True)
 
         self.check_after = time.time() + TIMEOUT_TOTP_SEND
+        self.tick_lock = False
 
     def on_click(self, event):
         if get_secret():
