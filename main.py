@@ -148,9 +148,9 @@ class TaskBarIcon(wx.adv.TaskBarIcon):
     def on_tick(self, event):
         if self.tick_lock:
             return
-            
+
         self.tick_lock = True
-        
+
         if not self.do_scan or self.check_after > time.time():
             self.tick_lock = False
             return
